@@ -1,0 +1,30 @@
+[package]
+name = "codexchat-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "codexchat_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "codexchat"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+crossterm.workspace = true
+codexchat-core = { path = "../codexchat-core" }
+futures-util.workspace = true
+open.workspace = true
+ratatui.workspace = true
+tokio.workspace = true
+tui-textarea.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,47 @@
+{
+  "pinned_tag": "rust-v0.115.0",
+  "source": "https://raw.githubusercontent.com/openai/codex/rust-v0.115.0/codex-rs/app-server/README.md",
+  "rpc_methods": [
+    "initialize",
+    "account/read",
+    "account/login/start",
+    "account/login/cancel",
+    "account/logout",
+    "account/rateLimits/read",
+    "model/list",
+    "thread/start",
+    "thread/resume",
+    "thread/list",
+    "thread/read",
+    "turn/start",
+    "turn/interrupt"
+  ],
+  "stream_notifications": [
+    "account/login/completed",
+    "account/updated",
+    "account/rateLimits/updated",
+    "thread/started",
+    "turn/started",
+    "item/agentMessage/delta",
+    "thread/tokenUsage/updated",
+    "turn/completed"
+  ],
+  "thread_override_fields": [
+    "approvalPolicy",
+    "cwd",
+    "developerInstructions",
+    "model",
+    "personality",
+    "sandbox"
+  ],
+  "turn_override_fields": [
+    "approvalPolicy",
+    "cwd",
+    "input",
+    "model",
+    "personality",
+    "sandboxPolicy",
+    "summary",
+    "threadId"
+  ]
+}

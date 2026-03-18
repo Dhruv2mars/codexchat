@@ -1,0 +1,175 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  RELEASE_TAG: ${{ github.ref_name }}
+
+concurrency: ${{ github.workflow }}-${{ github.ref_name }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - id: meta
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./packages/cli/package.json').version")"
+          if [ "v${version}" != "${RELEASE_TAG}" ]; then
+            echo "tag/version mismatch"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  create_release:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release view "${RELEASE_TAG}" >/dev/null 2>&1 || gh release create "${RELEASE_TAG}" --title "${RELEASE_TAG}" --generate-notes
+
+  build_upload:
+    needs: create_release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            ext: ""
+            target: ""
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
+            ext: ""
+            target: aarch64-unknown-linux-gnu
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            ext: ".exe"
+            target: ""
+          - os: windows-latest
+            platform: win32
+            arch: arm64
+            ext: ".exe"
+            target: aarch64-pc-windows-msvc
+          - os: macos-14
+            platform: darwin
+            arch: arm64
+            ext: ""
+            target: ""
+          - os: macos-14
+            platform: darwin
+            arch: x64
+            ext: ""
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+      - shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
+          if [ -n "${{ matrix.target }}" ]; then
+            rustup target add "${{ matrix.target }}"
+            cargo build --release -p codexchat-cli --target "${{ matrix.target }}"
+          else
+            cargo build --release -p codexchat-cli
+          fi
+      - shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          bin_dir='target'
+          if [ -n "${{ matrix.target }}" ]; then bin_dir="target/${{ matrix.target }}"; fi
+          cp "${bin_dir}/release/codexchat${{ matrix.ext }}" "dist/codexchat-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}"
+      - shell: bash
+        run: |
+          cd dist
+          if command -v shasum >/dev/null 2>&1; then shasum -a 256 * > checksums-${{ matrix.platform }}-${{ matrix.arch }}.txt; else sha256sum * > checksums-${{ matrix.platform }}-${{ matrix.arch }}.txt; fi
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in dist/*; do
+            gh release upload --clobber "${RELEASE_TAG}" "$f"
+          done
+
+  publish_npm:
+    needs: [validate, build_upload]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - run: |
+          set -euo pipefail
+          local_v="$(node -p "require('./packages/cli/package.json').version")"
+          remote_v="$(npm view @dhruv2mars/codexchat version 2>/dev/null || true)"
+          if [ -n "${remote_v:-}" ] && [ "${remote_v}" = "${local_v}" ]; then
+            echo "skip: already on npm (${remote_v})"
+            exit 0
+          fi
+          rc="${RUNNER_TEMP:-/tmp}/npmrc"
+          echo "registry=https://registry.npmjs.org/" > "$rc"
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> "$rc"
+          fi
+          export NPM_CONFIG_USERCONFIG="$rc"
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            export NODE_AUTH_TOKEN="${NPM_TOKEN}"
+          else
+            unset NODE_AUTH_TOKEN || true
+          fi
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "publish via npm trusted publisher"
+          else
+            echo "publish via NPM_TOKEN fallback"
+          fi
+          cd packages/cli && npm publish --access public
+        shell: bash
+      - if: failure() && env.NPM_TOKEN == ''
+        run: |
+          echo "trusted publisher not configured and NPM_TOKEN missing"
+          exit 1
