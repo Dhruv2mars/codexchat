@@ -1,0 +1,17 @@
+node_modules
+.DS_Store
+.env
+.env.*
+!.env.example
+dist
+coverage
+.turbo
+.vite
+playwright-report
+test-results
+*.log
+.vercel
+target
+Cargo.lock
+.copilotchat
+*.tgz

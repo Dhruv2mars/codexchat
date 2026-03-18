@@ -1,0 +1,27 @@
+{
+  "name": "codexchat",
+  "private": true,
+  "packageManager": "bun@1.3.5",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "cli": "cargo run -p codexchat-cli --",
+    "dev": "cargo run -p codexchat-cli --",
+    "test": "bun run test:js && bun run test:rust",
+    "test:js": "cargo build -p codexchat-cli && bun run --filter @dhruv2mars/codexchat test:coverage",
+    "test:rust": "cargo test --workspace",
+    "build": "bun run build:js && cargo build --workspace",
+    "build:js": "bun run --filter @dhruv2mars/codexchat build",
+    "check": "bun run check:js && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
+    "check:js": "bun run --filter @dhruv2mars/codexchat check",
+    "pack:cli": "npm pack ./packages/cli",
+    "release:version": "bunx changeset version",
+    "release:tag": "TAG=\"v$(node -p \\\"require('./packages/cli/package.json').version\\\")\" && git tag \"$TAG\" && git push origin \"$TAG\""
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "c8": "^10.1.3",
+    "@types/node": "24.5.2"
+  }
+}
