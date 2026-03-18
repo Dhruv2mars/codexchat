@@ -1,0 +1,97 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  rust-target-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os: windows-latest
+            target: ""
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+          - os: macos-14
+            target: ""
+          - os: macos-14
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Setup Linux arm64 cross linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Build codexchat-cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
+          if [ -n "${{ matrix.target }}" ]; then
+            rustup target add "${{ matrix.target }}"
+            cargo build --release -p codexchat-cli --target "${{ matrix.target }}"
+          else
+            cargo build --release -p codexchat-cli
+          fi
+
+  rust-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Linux native deps
+        run: sudo apt-get update && sudo apt-get install -y pkg-config
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --workspace
+      - name: Smoke help
+        run: cargo run -p codexchat-cli -- --help
+
+  js-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - run: CODEXCHAT_SKIP_DOWNLOAD=1 bun install --frozen-lockfile
+      - run: cargo build -p codexchat-cli
+      - run: bun run test:js
+      - run: bun run check:js
+      - run: bun run build:js
+
+  package-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        run: CODEXCHAT_SKIP_DOWNLOAD=1 bun install --frozen-lockfile
+      - name: Build cli binary
+        run: cargo build -p codexchat-cli
+      - name: CLI js tests
+        run: bun run --cwd packages/cli test
+      - name: Pack npm package
+        run: npm pack ./packages/cli
+      - name: Launcher smoke
+        run: CODEXCHAT_BIN=target/debug/codexchat CODEXCHAT_SKIP_DOWNLOAD=1 node packages/cli/bin/codexchat.js --help

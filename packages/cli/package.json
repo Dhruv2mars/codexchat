@@ -1,0 +1,44 @@
+{
+  "name": "@dhruv2mars/codexchat",
+  "version": "0.1.6",
+  "description": "ChatGPT terminal app with official Codex bridge",
+  "type": "module",
+  "bin": {
+    "codexchat": "bin/codexchat.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "codexchat": "node bin/codexchat.js",
+    "build": "node -e \"process.exit(0)\"",
+    "check": "node --check bin/codexchat.js && node --check bin/codexchat-lib.js && node --check bin/install.js && node --check bin/install-lib.js && node --check scripts/test.js",
+    "test": "node scripts/test.js",
+    "test:coverage": "c8 --all --include bin/codexchat-lib.js --include bin/install-lib.js --reporter text-summary node scripts/test.js"
+  },
+  "homepage": "https://github.com/Dhruv2mars/codexchat#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dhruv2mars/codexchat.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/Dhruv2mars/codexchat/issues"
+  },
+  "keywords": [
+    "chatgpt",
+    "codex",
+    "chat",
+    "cli",
+    "rust",
+    "tui"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "preferGlobal": true,
+  "license": "MIT"
+}
