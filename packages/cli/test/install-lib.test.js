@@ -9,9 +9,11 @@ import {
   cachePathsFor,
   checksumsAssetNameFor,
   codexAssetSpecFor,
+  extractedBinaryCandidatesFor,
   packageManagerHintFromEnv,
   parseChecksumForAsset,
   pinnedCodexVersion,
+  requestProtocolFor,
   resolvePackageVersion,
   shouldInstallBinary
 } from "../bin/install-lib.js";
@@ -113,4 +115,14 @@ test("install lib maps pinned codex assets for all supported targets", () => {
   });
   assert.throws(() => codexAssetSpecFor("linux", "ppc64"), /unsupported_platform/);
   assert.equal(parseChecksumForAsset("bbbb invalid", "codexchat-darwin-arm64"), null);
+  assert.deepEqual(
+    extractedBinaryCandidatesFor("codex-aarch64-apple-darwin.tar.gz", "codex"),
+    ["codex", "codex-aarch64-apple-darwin"]
+  );
+});
+
+test("install lib selects request transport from release url", () => {
+  assert.equal(requestProtocolFor("https://example.com/release"), "https:");
+  assert.equal(requestProtocolFor("http://127.0.0.1:8123/release"), "http:");
+  assert.throws(() => requestProtocolFor("ftp://example.com/release"), /unsupported_protocol/);
 });

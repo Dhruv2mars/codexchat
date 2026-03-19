@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { URL } from "node:url";
 
 const PINNED_CODEX_VERSION = "rust-v0.115.0";
 const CODEX_REPO = "openai/codex";
@@ -46,6 +47,22 @@ export function cachePathsFor(installRoot, version, asset, checksumsAsset) {
     cacheChecksums: join(root, checksumsAsset),
     cacheDir: root
   };
+}
+
+export function requestProtocolFor(url) {
+  const protocol = new URL(url).protocol;
+  if (protocol !== "http:" && protocol !== "https:") {
+    throw new Error(`unsupported_protocol:${protocol}`);
+  }
+  return protocol;
+}
+
+export function extractedBinaryCandidatesFor(asset, binName) {
+  const candidates = [binName];
+  if (asset.endsWith(".tar.gz")) {
+    candidates.push(asset.slice(0, -".tar.gz".length));
+  }
+  return candidates;
 }
 
 export function packageManagerHintFromEnv(env = process.env) {
