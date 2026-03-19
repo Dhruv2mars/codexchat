@@ -1047,3 +1047,92 @@ fn centered_rect(area: Rect, width_percent: u16, height_percent: u16) -> Rect {
         ])
         .split(vertical[1])[1]
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use codexchat_core::{codex::CodexClient, config::AppPaths, history::ThreadStore};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use serde_json::Value;
+    use tempfile::tempdir;
+    use tokio::{
+        io::{AsyncBufReadExt, AsyncWriteExt, BufReader, duplex},
+        sync::{mpsc, oneshot},
+    };
+
+    use super::{App, handle_key_event};
+
+    #[tokio::test]
+    async fn esc_interrupts_active_turn() {
+        let (client_io, server_io) = duplex(4096);
+        let (client_reader, client_writer) = tokio::io::split(client_io);
+        let (server_reader, mut server_writer) = tokio::io::split(server_io);
+        let (interrupt_tx, interrupt_rx) = oneshot::channel();
+
+        tokio::spawn(async move {
+            let mut interrupt_tx = Some(interrupt_tx);
+            let mut reader = BufReader::new(server_reader);
+            let mut line = String::new();
+            loop {
+                line.clear();
+                if reader.read_line(&mut line).await.ok() == Some(0) {
+                    break;
+                }
+                let request: Value = serde_json::from_str(&line).expect("json");
+                if request.get("method").and_then(Value::as_str) != Some("turn/interrupt") {
+                    continue;
+                }
+                if let Some(tx) = interrupt_tx.take() {
+                    tx.send(request.clone()).expect("interrupt request");
+                }
+                let id = request
+                    .get("id")
+                    .and_then(Value::as_u64)
+                    .expect("request id");
+                server_writer
+                    .write_all(
+                        format!("{}\n", serde_json::json!({ "id": id, "result": {} })).as_bytes(),
+                    )
+                    .await
+                    .expect("interrupt response");
+                break;
+            }
+        });
+
+        let client = Arc::new(CodexClient::from_parts(client_reader, client_writer));
+        let temp = tempdir().expect("tempdir");
+        let store = ThreadStore::new(AppPaths::from_root(temp.path().join(".codexchat")));
+        let mut app = App::new(Default::default(), Vec::new());
+        app.active_remote_thread_id = Some("thr_123".into());
+        app.active_turn_id = Some("turn_123".into());
+        app.stream_task = Some(tokio::spawn(async {}));
+        let (event_tx, _) = mpsc::unbounded_channel();
+
+        let should_quit = handle_key_event(
+            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+            client,
+            &store,
+            &mut app,
+            &event_tx,
+        )
+        .await
+        .expect("handle esc");
+
+        assert!(!should_quit);
+        assert_eq!(app.status, "Stopping stream...");
+
+        let request: Value = tokio::time::timeout(std::time::Duration::from_secs(1), interrupt_rx)
+            .await
+            .expect("interrupt request received")
+            .expect("interrupt payload");
+        assert_eq!(
+            request.pointer("/params/threadId").and_then(Value::as_str),
+            Some("thr_123")
+        );
+        assert_eq!(
+            request.pointer("/params/turnId").and_then(Value::as_str),
+            Some("turn_123")
+        );
+    }
+}
