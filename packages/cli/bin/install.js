@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import http from "node:http";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import https from "node:https";
@@ -22,9 +23,11 @@ import {
   cachePathsFor,
   checksumsAssetNameFor,
   codexAssetSpecFor,
+  extractedBinaryCandidatesFor,
   packageManagerHintFromEnv,
   parseChecksumForAsset,
   pinnedCodexVersion,
+  requestProtocolFor,
   resolvePackageVersion,
   shouldInstallBinary
 } from "./install-lib.js";
@@ -145,7 +148,10 @@ async function installCodexBinary({ archivePath, destination, spec, url }) {
     if (spec.asset.endsWith(".tar.gz")) {
       mkdirSync(tempExtractDir, { recursive: true });
       extractTarball(archivePath, tempExtractDir);
-      const extracted = findFile(tempExtractDir, spec.binName);
+      const extracted = findFirstFile(
+        tempExtractDir,
+        extractedBinaryCandidatesFor(spec.asset, spec.binName)
+      );
       if (!extracted) throw new Error(`missing_codex_binary:${spec.binName}`);
       renameSync(extracted, tempPath);
     } else {
@@ -171,16 +177,16 @@ function extractTarball(archivePath, outDir) {
   }
 }
 
-function findFile(root, name) {
+function findFirstFile(root, names) {
   for (const entry of readdirSync(root)) {
     const fullPath = join(root, entry);
     const stats = statSync(fullPath);
     if (stats.isDirectory()) {
-      const nested = findFile(fullPath, name);
+      const nested = findFirstFile(fullPath, names);
       if (nested) return nested;
       continue;
     }
-    if (basename(fullPath) === name) return fullPath;
+    if (names.includes(basename(fullPath))) return fullPath;
   }
   return null;
 }
@@ -192,27 +198,37 @@ function download(url, outputPath, redirects = 0) {
   const tempPath = `${outputPath}.part`;
   rmSync(tempPath, { force: true });
   return new Promise((resolve, reject) => {
-    const request = https.get(url, { headers: { "User-Agent": "codexchat-installer" } }, (response) => {
-      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        response.resume();
-        download(response.headers.location, outputPath, redirects + 1).then(resolve, reject);
-        return;
-      }
-      if (response.statusCode !== 200) {
-        response.resume();
-        reject(new Error(`http ${response.statusCode}`));
-        return;
-      }
-      const file = createWriteStream(tempPath);
-      response.pipe(file);
-      file.on("finish", () => {
-        file.close(() => {
-          renameSync(tempPath, outputPath);
-          resolve();
+    const transport = requestProtocolFor(url) === "http:" ? http : https;
+    const request = transport.get(
+      url,
+      { headers: { "User-Agent": "codexchat-installer" } },
+      (response) => {
+        if (
+          response.statusCode
+          && response.statusCode >= 300
+          && response.statusCode < 400
+          && response.headers.location
+        ) {
+          response.resume();
+          download(response.headers.location, outputPath, redirects + 1).then(resolve, reject);
+          return;
+        }
+        if (response.statusCode !== 200) {
+          response.resume();
+          reject(new Error(`http ${response.statusCode}`));
+          return;
+        }
+        const file = createWriteStream(tempPath);
+        response.pipe(file);
+        file.on("finish", () => {
+          file.close(() => {
+            renameSync(tempPath, outputPath);
+            resolve();
+          });
         });
-      });
-      file.on("error", reject);
-    });
+        file.on("error", reject);
+      }
+    );
     request.on("error", reject);
   });
 }
@@ -222,24 +238,34 @@ function requestText(url, redirects = 0) {
     throw new Error("too_many_redirects");
   }
   return new Promise((resolve, reject) => {
-    const request = https.get(url, { headers: { "User-Agent": "codexchat-installer" } }, (response) => {
-      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        response.resume();
-        requestText(response.headers.location, redirects + 1).then(resolve, reject);
-        return;
+    const transport = requestProtocolFor(url) === "http:" ? http : https;
+    const request = transport.get(
+      url,
+      { headers: { "User-Agent": "codexchat-installer" } },
+      (response) => {
+        if (
+          response.statusCode
+          && response.statusCode >= 300
+          && response.statusCode < 400
+          && response.headers.location
+        ) {
+          response.resume();
+          requestText(response.headers.location, redirects + 1).then(resolve, reject);
+          return;
+        }
+        if (response.statusCode !== 200) {
+          response.resume();
+          reject(new Error(`http ${response.statusCode}`));
+          return;
+        }
+        let data = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          data += chunk;
+        });
+        response.on("end", () => resolve(data));
       }
-      if (response.statusCode !== 200) {
-        response.resume();
-        reject(new Error(`http ${response.statusCode}`));
-        return;
-      }
-      let data = "";
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => {
-        data += chunk;
-      });
-      response.on("end", () => resolve(data));
-    });
+    );
     request.on("error", reject);
   });
 }
