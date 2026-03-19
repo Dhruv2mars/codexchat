@@ -270,13 +270,20 @@ impl CodexClient {
         Ok(response
             .data
             .into_iter()
-            .map(|model| ModelDescriptor {
-                compatible: false,
-                default: model.default.unwrap_or(false),
-                hidden: model.hidden.unwrap_or(false),
-                id: model.id,
-                label: model.label,
-                model_provider: model.model_provider,
+            .map(|model| {
+                let id = model.id;
+                let label = model
+                    .label
+                    .or(model.display_name)
+                    .unwrap_or_else(|| model.model.unwrap_or_else(|| id.clone()));
+                ModelDescriptor {
+                    compatible: false,
+                    default: model.default.or(model.is_default).unwrap_or(false),
+                    hidden: model.hidden.unwrap_or(false),
+                    id,
+                    label,
+                    model_provider: model.model_provider,
+                }
             })
             .collect())
     }
@@ -307,7 +314,7 @@ impl CodexClient {
                     "developerInstructions": DEFAULT_DEVELOPER_INSTRUCTIONS,
                     "model": model,
                     "personality": "friendly",
-                    "sandbox": "readOnly",
+                    "sandbox": "read-only",
                     "threadId": thread_id,
                 }),
             )
@@ -328,7 +335,7 @@ impl CodexClient {
                     "developerInstructions": DEFAULT_DEVELOPER_INSTRUCTIONS,
                     "model": model,
                     "personality": "friendly",
-                    "sandbox": "readOnly",
+                    "sandbox": "read-only",
                     "serviceName": "codexchat",
                 }),
             )
@@ -687,9 +694,12 @@ struct ModelListResponse {
 #[serde(rename_all = "camelCase")]
 struct RemoteModel {
     default: Option<bool>,
+    display_name: Option<String>,
     hidden: Option<bool>,
     id: String,
-    label: String,
+    is_default: Option<bool>,
+    label: Option<String>,
+    model: Option<String>,
     model_provider: Option<String>,
 }
 
@@ -839,7 +849,14 @@ mod tests {
                                         "id": id,
                                         "result": {
                                             "data": [
-                                                { "id": "gpt-5.4", "label": "GPT-5.4", "default": true, "hidden": false, "modelProvider": "openai" }
+                                                {
+                                                    "id": "gpt-5.4",
+                                                    "model": "gpt-5.4",
+                                                    "displayName": "GPT-5.4",
+                                                    "isDefault": true,
+                                                    "hidden": false,
+                                                    "modelProvider": "openai"
+                                                }
                                             ]
                                         }
                                     })
@@ -850,6 +867,10 @@ mod tests {
                             .expect("models response");
                     }
                     "thread/start" => {
+                        assert_eq!(
+                            request.pointer("/params/sandbox").and_then(Value::as_str),
+                            Some("read-only")
+                        );
                         server_writer
                             .write_all(
                                 format!(
@@ -862,6 +883,12 @@ mod tests {
                             .expect("thread response");
                     }
                     "turn/start" => {
+                        assert_eq!(
+                            request
+                                .pointer("/params/sandboxPolicy/type")
+                                .and_then(Value::as_str),
+                            Some("readOnly")
+                        );
                         server_writer
                             .write_all(
                                 format!(

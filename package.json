@@ -9,6 +9,7 @@
     "cli": "cargo run -p codexchat-cli --",
     "dev": "cargo run -p codexchat-cli --",
     "test": "bun run test:js && bun run test:rust",
+    "test:install-smoke": "node scripts/smoke-install.mjs",
     "test:js": "cargo build -p codexchat-cli && bun run --filter @dhruv2mars/codexchat test:coverage",
     "test:rust": "cargo test --workspace",
     "build": "bun run build:js && cargo build --workspace",
