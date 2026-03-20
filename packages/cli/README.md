@@ -5,10 +5,10 @@ Chat with ChatGPT from your terminal.
 ## Install
 
 Public status on March 20, 2026:
-- npm package is not published yet
-- GitHub release assets are not published yet
+- npm package is published
+- GitHub release assets are published
 
-After the first public release:
+Install with any supported package manager:
 
 ```bash
 npm i -g @dhruv2mars/codexchat
@@ -23,7 +23,7 @@ Release assets come from GitHub Releases for your platform.
 Auth runs through the official `codex app-server` bridge and ChatGPT sign-in.
 The app stores local config and thread history only.
 
-Until the first release, use the repo directly:
+For local dev, use the repo directly:
 
 ```bash
 bun install

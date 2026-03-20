@@ -38,11 +38,10 @@ test("repo ships core oss docs and templates", () => {
 
 test("root readme documents supported install and update paths", () => {
   const readme = read(join(repoRoot, "README.md"));
-  assert.match(readme, /npm package is not published yet/i);
-  assert.match(readme, /GitHub release assets are not published yet/i);
+  assert.match(readme, /npm package is published/i);
+  assert.match(readme, /GitHub release assets are published/i);
   assert.match(readme, /npm i -g @dhruv2mars\/codexchat/);
   assert.match(readme, /bun install -g @dhruv2mars\/codexchat/);
-  assert.match(readme, /cargo run -p codexchat-cli --/);
   assert.match(readme, /codexchat update/);
   assert.match(readme, /First run downloads the native binary and pinned codex bridge/i);
   assert.match(readme, /codex app-server/i);
@@ -53,9 +52,9 @@ test("root readme documents supported install and update paths", () => {
 test("package readme is npm-ready and package avoids blocked postinstall", () => {
   const packageReadme = read(join(packageRoot, "README.md"));
   assert.match(packageReadme, /@dhruv2mars\/codexchat/);
-  assert.match(packageReadme, /npm package is not published yet/i);
+  assert.match(packageReadme, /npm package is published/i);
+  assert.match(packageReadme, /GitHub release assets are published/i);
   assert.match(packageReadme, /bun install -g @dhruv2mars\/codexchat/);
-  assert.match(packageReadme, /cargo run -p codexchat-cli --/);
   assert.match(packageReadme, /codexchat update/);
   assert.match(packageReadme, /pinned `codex` bridge/i);
 
