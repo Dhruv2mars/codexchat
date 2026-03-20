@@ -7,6 +7,7 @@ on:
 
 env:
   RELEASE_TAG: ${{ github.ref_name }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency: ${{ github.workflow }}-${{ github.ref_name }}
 
@@ -167,7 +168,7 @@ jobs:
           else
             echo "publish via NPM_TOKEN fallback"
           fi
-          cd packages/cli && npm publish --access public
+          cd packages/cli && npm publish --provenance --access public
         shell: bash
       - if: failure() && env.NPM_TOKEN == ''
         run: |
