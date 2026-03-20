@@ -14,7 +14,12 @@ It does not store ChatGPT tokens in app files.
 
 ## Install
 
-Use any supported package manager:
+Public status on March 20, 2026:
+- app is ready
+- npm package is not published yet
+- GitHub release assets are not published yet
+
+When the first public release is cut, use any supported package manager:
 
 ```bash
 npm i -g @dhruv2mars/codexchat
@@ -28,8 +33,14 @@ bun install -g @dhruv2mars/codexchat
 pnpm add -g @dhruv2mars/codexchat
 ```
 
-First run downloads the native binary into `~/.codexchat/bin/`.
 First run downloads the native binary and pinned codex bridge into `~/.codexchat/bin/`.
+
+Until then, run from source:
+
+```bash
+bun install
+cargo run -p codexchat-cli --
+```
 
 ## Quickstart
 
