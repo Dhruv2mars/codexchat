@@ -1,6 +1,6 @@
 {
   "name": "@dhruv2mars/codexchat",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "ChatGPT terminal app with official Codex bridge",
   "type": "module",
   "bin": {
