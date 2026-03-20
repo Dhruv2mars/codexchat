@@ -37,6 +37,7 @@ const checksumName = checksumsAssetNameFor();
 const assetPath = join(releaseDir, assetName);
 const packageJsonPath = join(repoRoot, "packages", "cli", "package.json");
 const packageVersion = JSON.parse(readFileSync(packageJsonPath, "utf8")).version;
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 if (!existsSync(builtBinary)) {
   fail(`missing built binary at ${builtBinary}. run cargo build -p codexchat-cli first`);
@@ -50,7 +51,7 @@ writeFileSync(
   `${sha256(assetPath)} *${assetName}\n`,
 );
 
-const packed = run("npm", ["pack", "./packages/cli"], { cwd: repoRoot, capture: true });
+const packed = run(npmCommand, ["pack", "./packages/cli"], { cwd: repoRoot, capture: true });
 const tarball = lastNonEmptyLine(packed.stdout);
 if (!tarball) {
   fail("npm pack did not return a tarball path");
