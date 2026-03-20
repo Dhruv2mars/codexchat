@@ -24,8 +24,8 @@ test("install lib resolves asset names and checksum parsing", () => {
   assert.equal(checksumsAssetNameFor("linux", "arm64"), "checksums-linux-arm64.txt");
 
   const cache = cachePathsFor("/tmp/codexchat", "0.1.0", "codexchat-darwin-arm64", "checksums-darwin-arm64.txt");
-  assert.equal(cache.cacheDir, "/tmp/codexchat/cache/v0.1.0");
-  assert.equal(cache.cacheBinary, "/tmp/codexchat/cache/v0.1.0/codexchat-darwin-arm64");
+  assert.equal(cache.cacheDir, join("/tmp/codexchat", "cache", "v0.1.0"));
+  assert.equal(cache.cacheBinary, join("/tmp/codexchat", "cache", "v0.1.0", "codexchat-darwin-arm64"));
 
   const checksum = parseChecksumForAsset(
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa *codexchat-darwin-arm64",

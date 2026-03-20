@@ -69,7 +69,13 @@ test("release workflow keeps tag and npm publish contract", () => {
 
 test("cli entry scripts are executable", () => {
   for (const relativePath of ["bin/codexchat.js", "bin/install.js"]) {
-    const mode = statSync(join(packageRoot, relativePath)).mode & 0o777;
+    const filePath = join(packageRoot, relativePath);
+    if (process.platform === "win32") {
+      const text = readFileSync(filePath, "utf8");
+      assert.match(text, /^#!\/usr\/bin\/env node/m, `${relativePath} must keep its node shebang`);
+      continue;
+    }
+    const mode = statSync(filePath).mode & 0o777;
     assert.notEqual(mode & 0o111, 0, `${relativePath} must be executable`);
   }
 });

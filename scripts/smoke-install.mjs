@@ -26,6 +26,7 @@ const tempRoot = mkdtempSync(join(tmpdir(), "codexchat-install-smoke-"));
 const releaseDir = join(tempRoot, "release");
 const packageDir = join(tempRoot, "package");
 const installRoot = join(tempRoot, "install");
+const cliPackageRoot = join(repoRoot, "packages", "cli");
 const builtBinary = join(
   repoRoot,
   "target",
@@ -35,8 +36,9 @@ const builtBinary = join(
 const assetName = assetNameFor();
 const checksumName = checksumsAssetNameFor();
 const assetPath = join(releaseDir, assetName);
-const packageJsonPath = join(repoRoot, "packages", "cli", "package.json");
+const packageJsonPath = join(cliPackageRoot, "package.json");
 const packageVersion = JSON.parse(readFileSync(packageJsonPath, "utf8")).version;
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 if (!existsSync(builtBinary)) {
   fail(`missing built binary at ${builtBinary}. run cargo build -p codexchat-cli first`);
@@ -50,12 +52,12 @@ writeFileSync(
   `${sha256(assetPath)} *${assetName}\n`,
 );
 
-const packed = run("npm", ["pack", "./packages/cli"], { cwd: repoRoot, capture: true });
+const packed = run(npmCommand, ["pack", "."], { cwd: cliPackageRoot, capture: true });
 const tarball = lastNonEmptyLine(packed.stdout);
 if (!tarball) {
   fail("npm pack did not return a tarball path");
 }
-run("tar", ["-xzf", tarball, "-C", packageDir], { cwd: repoRoot });
+run("tar", ["-xzf", tarball, "-C", packageDir], { cwd: cliPackageRoot });
 
 const extractedRoot = join(packageDir, "package");
 const installer = join(extractedRoot, "bin", "install.js");
@@ -141,6 +143,7 @@ function run(command, args, options = {}) {
     cwd: options.cwd,
     encoding: "utf8",
     env: options.env || process.env,
+    shell: process.platform === "win32" && /\.cmd$/i.test(command),
     stdio: options.capture ? "pipe" : "inherit",
   });
   if (result.status !== 0) {

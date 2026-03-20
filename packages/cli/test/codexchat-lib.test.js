@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import {
   binNameForPlatform,
@@ -100,19 +100,25 @@ test("codexchat lib probes package managers and detects installed source manager
   const temp = mkdtempSync(join(tmpdir(), "codexchat-probe-"));
   const originalPath = process.env.PATH;
   try {
-    const script = "#!/bin/sh\nprintf '@dhruv2mars/codexchat from %s' \"$0\"\n";
     for (const command of ["bun", "npm", "pnpm", "yarn"]) {
-      const file = join(temp, command);
-      writeFileSync(file, script);
-      chmodSync(file, 0o755);
+      if (process.platform === "win32") {
+        const file = join(temp, `${command}.cmd`);
+        writeFileSync(file, "@echo off\r\necho @dhruv2mars/codexchat\r\n");
+      } else {
+        const file = join(temp, command);
+        writeFileSync(file, "#!/bin/sh\nprintf '@dhruv2mars/codexchat from %s' \"$0\"\n");
+        chmodSync(file, 0o755);
+      }
     }
 
-    process.env.PATH = temp;
+    process.env.PATH = originalPath ? `${temp}${delimiter}${originalPath}` : temp;
 
-    assert.equal(defaultProbe("bun").status, 0);
-    assert.match(defaultProbe("pnpm").stdout, /codexchat/);
-    assert.match(defaultProbe("yarn").stdout, /codexchat/);
-    assert.match(defaultProbe("npm").stdout, /codexchat/);
+    if (process.platform !== "win32") {
+      assert.equal(defaultProbe("bun").status, 0);
+      assert.match(defaultProbe("pnpm").stdout, /codexchat/);
+      assert.match(defaultProbe("yarn").stdout, /codexchat/);
+      assert.match(defaultProbe("npm").stdout, /codexchat/);
+    }
     assert.equal(defaultProbe("missing-manager").status, 1);
     assert.deepEqual(
       defaultProbe("bun", () => {
