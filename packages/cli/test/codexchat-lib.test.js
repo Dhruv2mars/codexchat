@@ -100,11 +100,15 @@ test("codexchat lib probes package managers and detects installed source manager
   const temp = mkdtempSync(join(tmpdir(), "codexchat-probe-"));
   const originalPath = process.env.PATH;
   try {
-    const script = "#!/bin/sh\nprintf '@dhruv2mars/codexchat from %s' \"$0\"\n";
     for (const command of ["bun", "npm", "pnpm", "yarn"]) {
-      const file = join(temp, command);
-      writeFileSync(file, script);
-      chmodSync(file, 0o755);
+      if (process.platform === "win32") {
+        const file = join(temp, `${command}.cmd`);
+        writeFileSync(file, "@echo off\r\necho @dhruv2mars/codexchat\r\n");
+      } else {
+        const file = join(temp, command);
+        writeFileSync(file, "#!/bin/sh\nprintf '@dhruv2mars/codexchat from %s' \"$0\"\n");
+        chmodSync(file, 0o755);
+      }
     }
 
     process.env.PATH = temp;
