@@ -134,8 +134,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -154,23 +152,7 @@ jobs:
           fi
           rc="${RUNNER_TEMP:-/tmp}/npmrc"
           echo "registry=https://registry.npmjs.org/" > "$rc"
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> "$rc"
-          fi
           export NPM_CONFIG_USERCONFIG="$rc"
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            export NODE_AUTH_TOKEN="${NPM_TOKEN}"
-          else
-            unset NODE_AUTH_TOKEN || true
-          fi
-          if [ -z "${NPM_TOKEN:-}" ]; then
-            echo "publish via npm trusted publisher"
-          else
-            echo "publish via NPM_TOKEN fallback"
-          fi
+          unset NODE_AUTH_TOKEN || true
           cd packages/cli && npm publish --provenance --access public
         shell: bash
-      - if: failure() && env.NPM_TOKEN == ''
-        run: |
-          echo "trusted publisher not configured and NPM_TOKEN missing"
-          exit 1
