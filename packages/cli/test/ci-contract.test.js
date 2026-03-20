@@ -26,4 +26,5 @@ test("install smoke uses windows-safe npm command", () => {
   assert.match(text, /const npmCommand = process\.platform === "win32" \? "npm\.cmd" : "npm";/);
   assert.match(text, /const cliPackageRoot = join\(repoRoot, "packages", "cli"\);/);
   assert.match(text, /run\(npmCommand, \["pack", "\."\], \{ cwd: cliPackageRoot, capture: true \}\)/);
+  assert.match(text, /shell:\s*process\.platform === "win32" && \/\\\.cmd\$\/i\.test\(command\)/);
 });

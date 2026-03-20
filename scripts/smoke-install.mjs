@@ -143,6 +143,7 @@ function run(command, args, options = {}) {
     cwd: options.cwd,
     encoding: "utf8",
     env: options.env || process.env,
+    shell: process.platform === "win32" && /\.cmd$/i.test(command),
     stdio: options.capture ? "pipe" : "inherit",
   });
   if (result.status !== 0) {
