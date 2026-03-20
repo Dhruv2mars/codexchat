@@ -8,7 +8,7 @@ use std::{
 use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand};
 use codexchat_core::{
-    auth::AccountInfo,
+    auth::{AccountInfo, AuthState},
     codex::{CodexClient, CodexClientOptions},
     config::AppPaths,
     history::ThreadStore,
@@ -73,6 +73,18 @@ pub fn choose_model(config: &AppConfig, models: &[ModelDescriptor]) -> Result<St
 
 pub async fn current_account(client: &CodexClient) -> Result<AccountInfo> {
     client.account_read().await
+}
+
+fn render_auth_status(account: &AccountInfo) -> String {
+    match account.auth_state {
+        Some(AuthState::Connected) => format!("Connected: {}", account.account_label()),
+        Some(AuthState::SignedOut) => "Signed out".into(),
+        Some(AuthState::SigningIn) => "Signing in".into(),
+        Some(AuthState::Expired) => "Auth expired".into(),
+        Some(AuthState::RateLimited) => "Rate limited".into(),
+        Some(AuthState::Error) => "Auth error".into(),
+        None => "Disconnected".into(),
+    }
 }
 
 pub async fn make_client() -> Result<CodexClient> {
@@ -163,11 +175,7 @@ async fn run_auth_command(command: AuthCommand) -> Result<()> {
         }
         AuthCommand::Status => {
             let account = current_account(&client).await?;
-            if account.is_connected() {
-                println!("Connected: {}", account.account_label());
-            } else {
-                println!("Disconnected");
-            }
+            println!("{}", render_auth_status(&account));
             Ok(())
         }
     }
@@ -281,8 +289,11 @@ async fn run_models_command() -> Result<()> {
 mod tests {
     use clap::Parser;
 
-    use crate::{AuthCommand, Cli, Command, choose_model};
-    use codexchat_core::types::{AppConfig, ModelDescriptor};
+    use crate::{AuthCommand, Cli, Command, choose_model, render_auth_status};
+    use codexchat_core::{
+        auth::{AccountInfo, AuthState},
+        types::{AppConfig, ModelDescriptor},
+    };
 
     #[test]
     fn parses_chat_and_auth_commands() {
@@ -348,6 +359,64 @@ mod tests {
             )
             .expect("choose fallback"),
             "gpt-5.4"
+        );
+    }
+
+    #[test]
+    fn renders_specific_auth_status_messages() {
+        assert_eq!(
+            render_auth_status(&AccountInfo {
+                auth_state: Some(AuthState::Connected),
+                auth_mode: Some("chatgpt".into()),
+                email: Some("user@example.com".into()),
+                plan_type: Some("plus".into()),
+                requires_openai_auth: true,
+            }),
+            "Connected: user@example.com (plus)"
+        );
+
+        assert_eq!(
+            render_auth_status(&AccountInfo {
+                auth_state: Some(AuthState::SignedOut),
+                auth_mode: None,
+                email: None,
+                plan_type: None,
+                requires_openai_auth: true,
+            }),
+            "Signed out"
+        );
+
+        assert_eq!(
+            render_auth_status(&AccountInfo {
+                auth_state: Some(AuthState::Expired),
+                auth_mode: None,
+                email: None,
+                plan_type: None,
+                requires_openai_auth: true,
+            }),
+            "Auth expired"
+        );
+
+        assert_eq!(
+            render_auth_status(&AccountInfo {
+                auth_state: Some(AuthState::RateLimited),
+                auth_mode: None,
+                email: None,
+                plan_type: None,
+                requires_openai_auth: true,
+            }),
+            "Rate limited"
+        );
+
+        assert_eq!(
+            render_auth_status(&AccountInfo {
+                auth_state: Some(AuthState::Error),
+                auth_mode: None,
+                email: None,
+                plan_type: None,
+                requires_openai_auth: true,
+            }),
+            "Auth error"
         );
     }
 }

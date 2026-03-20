@@ -1,5 +1,11 @@
 # @dhruv2mars/codexchat
 
+## 0.1.8
+
+### Patch Changes
+
+- Show clear auth status text for signed-out users on fresh installs.
+
 ## 0.1.7
 
 ### Patch Changes
