@@ -1,5 +1,11 @@
 # @dhruv2mars/codexchat
 
+## 0.1.9
+
+### Patch Changes
+
+- Upgrade GitHub release workflow actions to the Node 24 majors and remove the deprecation warning.
+
 ## 0.1.8
 
 ### Patch Changes
