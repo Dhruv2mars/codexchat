@@ -1,5 +1,13 @@
 # @dhruv2mars/codexchat
 
+## 0.1.7
+
+### Patch Changes
+
+- Switch npm release publishing to GitHub trusted publishing.
+- Remove the old token fallback path from the release workflow.
+- Refresh public package docs to reflect live npm and GitHub installs.
+
 ## 0.1.6
 
 ### Patch Changes

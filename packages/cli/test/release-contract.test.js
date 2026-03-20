@@ -58,8 +58,8 @@ test("release workflow keeps tag and npm publish contract", () => {
   assert.match(text, /tags:\s*\n\s*-\s*["']v\*["']/);
   assert.match(text, /gh release create "\$\{RELEASE_TAG\}" --title "\$\{RELEASE_TAG\}" --generate-notes/);
   assert.match(text, /npm publish --provenance --access public/);
-  assert.match(text, /NPM_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
-  assert.match(text, /trusted publisher not configured and NPM_TOKEN missing/);
+  assert.doesNotMatch(text, /NPM_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
+  assert.doesNotMatch(text, /trusted publisher not configured and NPM_TOKEN missing/);
   assert.match(text, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24:\s*true/);
 });
 
