@@ -24,5 +24,6 @@ test("windows package smoke install exports skip-download env in workflow-safe f
 test("install smoke uses windows-safe npm command", () => {
   const text = readFileSync(smokeInstallScript, "utf8");
   assert.match(text, /const npmCommand = process\.platform === "win32" \? "npm\.cmd" : "npm";/);
-  assert.match(text, /run\(npmCommand, \["pack", "\.\/packages\/cli"\], \{ cwd: repoRoot, capture: true \}\)/);
+  assert.match(text, /const cliPackageRoot = join\(repoRoot, "packages", "cli"\);/);
+  assert.match(text, /run\(npmCommand, \["pack", "\."\], \{ cwd: cliPackageRoot, capture: true \}\)/);
 });
