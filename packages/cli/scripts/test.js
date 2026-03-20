@@ -9,6 +9,7 @@ const tests = spawnSync(
   process.execPath,
   [
     "--test",
+    join(here, "..", "test", "ci-contract.test.js"),
     join(here, "..", "test", "codexchat-lib.test.js"),
     join(here, "..", "test", "docs-contract.test.js"),
     join(here, "..", "test", "install-lib.test.js"),
