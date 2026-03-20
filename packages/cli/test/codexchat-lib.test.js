@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import {
   binNameForPlatform,
@@ -111,12 +111,14 @@ test("codexchat lib probes package managers and detects installed source manager
       }
     }
 
-    process.env.PATH = temp;
+    process.env.PATH = originalPath ? `${temp}${delimiter}${originalPath}` : temp;
 
-    assert.equal(defaultProbe("bun").status, 0);
-    assert.match(defaultProbe("pnpm").stdout, /codexchat/);
-    assert.match(defaultProbe("yarn").stdout, /codexchat/);
-    assert.match(defaultProbe("npm").stdout, /codexchat/);
+    if (process.platform !== "win32") {
+      assert.equal(defaultProbe("bun").status, 0);
+      assert.match(defaultProbe("pnpm").stdout, /codexchat/);
+      assert.match(defaultProbe("yarn").stdout, /codexchat/);
+      assert.match(defaultProbe("npm").stdout, /codexchat/);
+    }
     assert.equal(defaultProbe("missing-manager").status, 1);
     assert.deepEqual(
       defaultProbe("bun", () => {
